@@ -1,39 +1,65 @@
+import os
+from tkinter import Tk, filedialog, Label, Button
+from PIL import Image, ImageTk
+
+# Загрузка модулей Keras и других необходимых библиотек
 from keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
 from keras.preprocessing import image
 import numpy as np
 
-# Загружаем предварительно обученную модель VGG16
+# Загрузка предварительно обученной модели VGG16
 model = VGG16(weights='imagenet')
 
-def classify_image(img_path):
-    # Загружаем и предобрабатываем изображение
-    img = image.load_img(img_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = preprocess_input(img_array)
+class ImageClassifierApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Image Classifier")
 
-    # Получаем предсказания от модели
-    predictions = model.predict(img_array)
+        self.label = Label(master, text="Выберите изображение:")
+        self.label.pack()
 
-    # Декодируем предсказания
-    decoded_predictions = decode_predictions(predictions, top=3)[0]
+        self.select_button = Button(master, text="Выбрать изображение", command=self.load_image)
+        self.select_button.pack()
 
-    # Выводим результаты
-    for i, (imagenet_id, label, score) in enumerate(decoded_predictions):
-        print(f"{i + 1}: {label} ({score:.2f})")
+        self.classify_button = Button(master, text="Классифицировать", command=self.classify_image)
+        self.classify_button.pack()
 
-    # Возвращаем вероятности для каждого класса
-    return {label: score for (_, label, score) in decoded_predictions}
+        self.result_label = Label(master, text="")
+        self.result_label.pack()
 
-# Пример использования
-img_path = 'путь_к_изображению.jpg'
-probabilities = classify_image(img_path)
+        self.image_path = None
 
-# Индикация "Человек" или "Животное" на основе вероятностей
-threshold = 0.5
-if probabilities.get('person', 0) > threshold:
-    print("Объект: Человек")
-elif probabilities.get('animal', 0) > threshold:
-    print("Объект: Животное")
-else:
-    print("Объект не определен")
+    def load_image(self):
+        file_path = filedialog.askopenfilename(initialdir="/", title="Выбрать файл", filetypes=[("Изображения", "*.jpg;*.png")])
+        if file_path:
+            self.image_path = file_path
+            self.show_image(file_path)
+
+    def show_image(self, file_path):
+        img = Image.open(file_path)
+        img = img.resize((250, 250), Image.ANTIALIAS)
+        photo = ImageTk.PhotoImage(img)
+
+        self.label.config(image=photo)
+        self.label.image = photo
+
+    def classify_image(self):
+        if self.image_path:
+            img = image.load_img(self.image_path, target_size=(224, 224))
+            img_array = image.img_to_array(img)
+            img_array = np.expand_dims(img_array, axis=0)
+            img_array = preprocess_input(img_array)
+
+            predictions = model.predict(img_array)
+            decoded_predictions = decode_predictions(predictions, top=3)[0]
+
+            result_text = "Результаты:\n"
+            for i, (imagenet_id, label, score) in enumerate(decoded_predictions):
+                result_text += f"{i + 1}: {label} ({score:.2f})\n"
+
+            self.result_label.config(text=result_text)
+
+if __name__ == "__main__":
+    root = Tk()
+    app = ImageClassifierApp(root)
+    root.mainloop()
