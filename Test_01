@@ -1,0 +1,39 @@
+from keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
+from keras.preprocessing import image
+import numpy as np
+
+# Загружаем предварительно обученную модель VGG16
+model = VGG16(weights='imagenet')
+
+def classify_image(img_path):
+    # Загружаем и предобрабатываем изображение
+    img = image.load_img(img_path, target_size=(224, 224))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = preprocess_input(img_array)
+
+    # Получаем предсказания от модели
+    predictions = model.predict(img_array)
+
+    # Декодируем предсказания
+    decoded_predictions = decode_predictions(predictions, top=3)[0]
+
+    # Выводим результаты
+    for i, (imagenet_id, label, score) in enumerate(decoded_predictions):
+        print(f"{i + 1}: {label} ({score:.2f})")
+
+    # Возвращаем вероятности для каждого класса
+    return {label: score for (_, label, score) in decoded_predictions}
+
+# Пример использования
+img_path = 'путь_к_изображению.jpg'
+probabilities = classify_image(img_path)
+
+# Индикация "Человек" или "Животное" на основе вероятностей
+threshold = 0.5
+if probabilities.get('person', 0) > threshold:
+    print("Объект: Человек")
+elif probabilities.get('animal', 0) > threshold:
+    print("Объект: Животное")
+else:
+    print("Объект не определен")
